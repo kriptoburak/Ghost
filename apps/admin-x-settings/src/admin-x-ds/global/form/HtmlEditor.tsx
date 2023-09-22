@@ -1,4 +1,5 @@
 import React, {ReactNode, Suspense, useCallback, useMemo} from 'react';
+import {useFocusContext} from '../../providers/DesignSystemProvider';
 
 export interface HtmlEditorProps {
     value?: string
@@ -106,6 +107,18 @@ const KoenigWrapper: React.FC<HtmlEditorProps & { editor: EditorResource }> = ({
         // }
         // don't rethrow, Lexical will attempt to gracefully recover
     }, []);
+    const {setFocusState} = useFocusContext();
+
+    const handleFocus = () => {
+        setFocusState(true);
+    };
+
+    const handleBlur = () => {
+        if (onBlur) {
+            onBlur();
+        }
+        setFocusState(false);
+    };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const koenig = useMemo(() => new Proxy({} as { [key: string]: any }, {
@@ -153,7 +166,8 @@ const KoenigWrapper: React.FC<HtmlEditorProps & { editor: EditorResource }> = ({
                 placeholderClassName='koenig-lexical-editor-input-placeholder'
                 placeholderText={placeholder}
                 singleParagraph={true}
-                onBlur={onBlur}
+                onBlur={handleBlur}
+                onFocus={handleFocus}
             >
                 <koenig.HtmlOutputPlugin html={value} setHtml={handleSetHtml} />
             </koenig.KoenigComposableEditor>
