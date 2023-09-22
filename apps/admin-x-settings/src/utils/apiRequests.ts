@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/react';
-import handleError from './handleError';
 import handleResponse from './handleResponse';
+import useHandleError from './handleError';
 import {APIError, MaintenanceError, ServerUnreachableError, TimeoutError} from './errors';
 import {QueryClient, UseInfiniteQueryOptions, UseQueryOptions, useInfiniteQuery, useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {getGhostPaths} from './helpers';
@@ -61,17 +61,18 @@ export const useFetchApi = () => {
         const retryPeriods = [500, 1000];
         const retryableErrors = [ServerUnreachableError, MaintenanceError, TypeError];
 
-        // const getErrorData = (error?: APIError, response?: Response) => {
-        //     const data: Record<string, unknown> = {
-        //         errorName: error?.name,
-        //         attempts,
-        //         totalSeconds: retryingMs / 1000
-        //     };
-        //     if (endpoint.toString().includes('/ghost/api/')) {
-        //         data.server = response?.headers.get('server');
-        //     }
-        //     return data;
-        // };
+        const getErrorData = (error?: APIError, response?: Response) => {
+            const data: Record<string, unknown> = {
+                errorName: error?.name,
+                attempts,
+                totalSeconds: retryingMs / 1000,
+                endpoint: endpoint.toString()
+            };
+            if (endpoint.toString().includes('/ghost/api/')) {
+                data.server = response?.headers.get('server');
+            }
+            return data;
+        };
 
         while (true) {
             try {
@@ -88,7 +89,7 @@ export const useFetchApi = () => {
                 });
 
                 if (attempts !== 0 && sentrydsn) {
-                    Sentry.captureMessage('Request took multiple attempts', {extra: {attempts, retryingMs, endpoint: endpoint.toString()}});
+                    Sentry.captureMessage('Request took multiple attempts', {extra: getErrorData()});
                 }
 
                 return handleResponse(response);
@@ -104,7 +105,7 @@ export const useFetchApi = () => {
                 }
 
                 if (attempts !== 0 && sentrydsn) {
-                    Sentry.captureMessage('Request failed after multiple attempts', {extra: {attempts, retryingMs, endpoint: endpoint.toString()}});
+                    Sentry.captureMessage('Request failed after multiple attempts', {extra: getErrorData()});
                 }
 
                 if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
@@ -151,6 +152,7 @@ type QueryHookOptions<ResponseData> = UseQueryOptions<ResponseData> & {
 export const createQuery = <ResponseData>(options: QueryOptions<ResponseData>) => ({searchParams, ...query}: QueryHookOptions<ResponseData> = {}) => {
     const url = apiUrl(options.path, searchParams || options.defaultSearchParams);
     const fetchApi = useFetchApi();
+    const handleError = useHandleError();
 
     const result = useQuery<ResponseData>({
         queryKey: [options.dataType, url],
@@ -166,7 +168,7 @@ export const createQuery = <ResponseData>(options: QueryOptions<ResponseData>) =
         if (result.error && query.defaultErrorHandler !== false) {
             handleError(result.error);
         }
-    }, [result.error, query.defaultErrorHandler]);
+    }, [handleError, result.error, query.defaultErrorHandler]);
 
     return {
         ...result,
@@ -183,6 +185,7 @@ export const createPaginatedQuery = <ResponseData extends {meta?: Meta}>(options
 
     const url = apiUrl(options.path, paginatedSearchParams);
     const fetchApi = useFetchApi();
+    const handleError = useHandleError();
 
     const result = useQuery<ResponseData>({
         queryKey: [options.dataType, url],
@@ -206,7 +209,7 @@ export const createPaginatedQuery = <ResponseData extends {meta?: Meta}>(options
         if (result.error && query.defaultErrorHandler !== false) {
             handleError(result.error);
         }
-    }, [result.error, query.defaultErrorHandler]);
+    }, [handleError, result.error, query.defaultErrorHandler]);
 
     return {
         ...result,
@@ -227,6 +230,7 @@ type InfiniteQueryHookOptions<ResponseData> = UseInfiniteQueryOptions<ResponseDa
 
 export const createInfiniteQuery = <ResponseData>(options: InfiniteQueryOptions<ResponseData>) => ({searchParams, getNextPageParams, ...query}: InfiniteQueryHookOptions<ResponseData>) => {
     const fetchApi = useFetchApi();
+    const handleError = useHandleError();
 
     const result = useInfiniteQuery<ResponseData>({
         queryKey: [options.dataType, apiUrl(options.path, searchParams || options.defaultSearchParams)],
@@ -241,7 +245,7 @@ export const createInfiniteQuery = <ResponseData>(options: InfiniteQueryOptions<
         if (result.error && query.defaultErrorHandler !== false) {
             handleError(result.error);
         }
-    }, [result.error, query.defaultErrorHandler]);
+    }, [handleError, result.error, query.defaultErrorHandler]);
 
     return {
         ...result,

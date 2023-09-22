@@ -21,7 +21,10 @@ interface AppProps {
     toggleFeatureFlag: (flag: string, enabled: boolean) => void;
     darkMode?: boolean;
     unsplashConfig: DefaultHeaderTypes
-    sentryDSN: string | null;
+    sentry?: {
+        dsn: string;
+        env: string | null;
+    }
 }
 
 const queryClient = new QueryClient({
@@ -29,7 +32,9 @@ const queryClient = new QueryClient({
         queries: {
             refetchOnWindowFocus: false,
             staleTime: 5 * (60 * 1000), // 5 mins
-            cacheTime: 10 * (60 * 1000) // 10 mins
+            cacheTime: 10 * (60 * 1000), // 10 mins
+            // We have custom retry logic for specific errors in fetchApi()
+            retry: false
         }
     }
 });
@@ -42,29 +47,30 @@ function SentryErrorBoundary({children}: {children: React.ReactNode}) {
     );
 }
 
-function App({ghostVersion, officialThemes, zapierTemplates, externalNavigate, toggleFeatureFlag, darkMode = false, unsplashConfig, sentryDSN}: AppProps) {
+function App({ghostVersion, officialThemes, zapierTemplates, externalNavigate, toggleFeatureFlag, darkMode = false, unsplashConfig, sentry}: AppProps) {
     const appClassName = clsx(
         'admin-x-settings h-[100vh] w-full overflow-y-auto overflow-x-hidden',
         darkMode && 'dark'
     );
-    
+
     useEffect(() => {
-        if (sentryDSN) {
+        if (sentry) {
             Sentry.init({
-                dsn: sentryDSN,
+                dsn: sentry.dsn,
                 release: ghostVersion,
+                environment: sentry.env || 'development',
                 integrations: [
                     new Sentry.BrowserTracing({
                     })
                 ]
             });
         }
-    }, [sentryDSN, ghostVersion]);
+    }, [sentry, ghostVersion]);
 
     return (
         <SentryErrorBoundary>
             <QueryClientProvider client={queryClient}>
-                <ServicesProvider ghostVersion={ghostVersion} officialThemes={officialThemes} sentryDSN={sentryDSN} toggleFeatureFlag={toggleFeatureFlag} unsplashConfig={unsplashConfig} zapierTemplates={zapierTemplates}>
+                <ServicesProvider ghostVersion={ghostVersion} officialThemes={officialThemes} sentryDSN={sentry?.dsn || null} toggleFeatureFlag={toggleFeatureFlag} unsplashConfig={unsplashConfig} zapierTemplates={zapierTemplates}>
                     <GlobalDataProvider>
                         <RoutingProvider externalNavigate={externalNavigate}>
                             <GlobalDirtyStateProvider>

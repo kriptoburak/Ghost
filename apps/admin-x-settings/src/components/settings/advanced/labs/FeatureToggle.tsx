@@ -1,6 +1,6 @@
 import React from 'react';
 import Toggle from '../../../../admin-x-ds/global/form/Toggle';
-import handleError from '../../../../utils/handleError';
+import useHandleError from '../../../../utils/handleError';
 import {ConfigResponseType, configDataType} from '../../../../api/config';
 import {getSettingValue, useEditSettings} from '../../../../api/settings';
 import {useGlobalData} from '../../../providers/GlobalDataProvider';
@@ -13,6 +13,7 @@ const FeatureToggle: React.FC<{ flag: string; }> = ({flag}) => {
     const {mutateAsync: editSettings} = useEditSettings();
     const client = useQueryClient();
     const {toggleFeatureFlag} = useServices();
+    const handleError = useHandleError();
 
     return <Toggle checked={labs[flag]} onChange={async () => {
         const newValue = !labs[flag];
