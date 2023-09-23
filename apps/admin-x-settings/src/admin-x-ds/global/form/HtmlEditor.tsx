@@ -1,5 +1,6 @@
-import * as Sentry from '@sentry/react';
-import React, {ReactNode, Suspense, useCallback, useMemo} from 'react';
+import * as Sentry from '@sentry/browser';
+import ErrorBoundary from '../ErrorBoundary';
+import React, {Suspense, useCallback, useMemo} from 'react';
 
 export interface HtmlEditorProps {
     value?: string
@@ -57,30 +58,6 @@ const fetchKoenig = function ({editorUrl, editorVersion}: { editorUrl: string; e
 };
 
 type EditorResource = ReturnType<typeof fetchKoenig>;
-
-class ErrorHandler extends React.Component<{ children: ReactNode }> {
-    state = {
-        hasError: false
-    };
-
-    static getDerivedStateFromError() {
-        return {hasError: true};
-    }
-
-    componentDidCatch(error: unknown, errorInfo: unknown) {
-        console.error(error, errorInfo); // eslint-disable-line
-    }
-
-    render() {
-        if (this.state.hasError) {
-            return (
-                <p className="koenig-react-editor-error">Loading has failed. Try refreshing the browser!</p>
-            );
-        }
-
-        return this.props.children;
-    }
-}
 
 const KoenigWrapper: React.FC<HtmlEditorProps & { editor: EditorResource }> = ({
     editor,
@@ -177,11 +154,11 @@ const HtmlEditor: React.FC<HtmlEditorProps & {
 
     return <div className={className || 'w-full'}>
         <div className="koenig-react-editor w-full [&_*]:!font-inherit [&_*]:!text-inherit">
-            <ErrorHandler>
+            <ErrorBoundary name='editor'>
                 <Suspense fallback={<p className="koenig-react-editor-loading">Loading editor...</p>}>
                     <KoenigWrapper {...props} editor={editorResource} />
                 </Suspense>
-            </ErrorHandler>
+            </ErrorBoundary>
         </div>
     </div>;
 };

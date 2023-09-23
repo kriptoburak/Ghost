@@ -1,17 +1,16 @@
-import * as Sentry from '@sentry/react';
 import GlobalDataProvider from './components/providers/GlobalDataProvider';
 import MainContent from './MainContent';
 import NiceModal from '@ebay/nice-modal-react';
 import RoutingProvider, {ExternalLink} from './components/providers/RoutingProvider';
 import clsx from 'clsx';
 import {DefaultHeaderTypes} from './utils/unsplash/UnsplashTypes';
-import {ErrorBoundary} from '@sentry/react';
 import {GlobalDirtyStateProvider} from './hooks/useGlobalDirtyState';
 import {OfficialTheme, ServicesProvider} from './components/providers/ServiceProvider';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+import {ErrorBoundary as SentryErrorBoundary} from '@sentry/react';
 import {Toaster} from 'react-hot-toast';
 import {ZapierTemplate} from './components/settings/advanced/integrations/ZapierModal';
-import {useEffect} from 'react';
+import type * as Sentry from '@sentry/browser';
 
 interface AppProps {
     ghostVersion: string;
@@ -21,10 +20,7 @@ interface AppProps {
     toggleFeatureFlag: (flag: string, enabled: boolean) => void;
     darkMode?: boolean;
     unsplashConfig: DefaultHeaderTypes
-    sentry?: {
-        dsn: string;
-        env: string | null;
-    }
+    sentry?: typeof Sentry
 }
 
 const queryClient = new QueryClient({
@@ -39,38 +35,16 @@ const queryClient = new QueryClient({
     }
 });
 
-function SentryErrorBoundary({children}: {children: React.ReactNode}) {
-    return (
-        <ErrorBoundary>
-            {children}
-        </ErrorBoundary>
-    );
-}
-
 function App({ghostVersion, officialThemes, zapierTemplates, externalNavigate, toggleFeatureFlag, darkMode = false, unsplashConfig, sentry}: AppProps) {
     const appClassName = clsx(
         'admin-x-settings h-[100vh] w-full overflow-y-auto overflow-x-hidden',
         darkMode && 'dark'
     );
 
-    useEffect(() => {
-        if (sentry) {
-            Sentry.init({
-                dsn: sentry.dsn,
-                release: ghostVersion,
-                environment: sentry.env || 'development',
-                integrations: [
-                    new Sentry.BrowserTracing({
-                    })
-                ]
-            });
-        }
-    }, [sentry, ghostVersion]);
-
     return (
         <SentryErrorBoundary>
             <QueryClientProvider client={queryClient}>
-                <ServicesProvider ghostVersion={ghostVersion} officialThemes={officialThemes} sentryDSN={sentry?.dsn || null} toggleFeatureFlag={toggleFeatureFlag} unsplashConfig={unsplashConfig} zapierTemplates={zapierTemplates}>
+                <ServicesProvider ghostVersion={ghostVersion} officialThemes={officialThemes} sentry={sentry} toggleFeatureFlag={toggleFeatureFlag} unsplashConfig={unsplashConfig} zapierTemplates={zapierTemplates}>
                     <GlobalDataProvider>
                         <RoutingProvider externalNavigate={externalNavigate}>
                             <GlobalDirtyStateProvider>

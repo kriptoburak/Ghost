@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/react';
 import handleResponse from './handleResponse';
 import useHandleError from './handleError';
 import {APIError, MaintenanceError, ServerUnreachableError, TimeoutError} from './errors';
@@ -6,7 +5,7 @@ import {QueryClient, UseInfiniteQueryOptions, UseQueryOptions, useInfiniteQuery,
 import {getGhostPaths} from './helpers';
 import {useEffect, useMemo} from 'react';
 import {usePage, usePagination} from '../hooks/usePagination';
-import {useSentryDSN, useServices} from '../components/providers/ServiceProvider';
+import {useSentry, useServices} from '../components/providers/ServiceProvider';
 
 export interface Meta {
     pagination: {
@@ -31,7 +30,7 @@ interface RequestOptions {
 
 export const useFetchApi = () => {
     const {ghostVersion} = useServices();
-    const sentrydsn = useSentryDSN();
+    const Sentry = useSentry();
 
     return async (endpoint: string | URL, options: RequestOptions = {}) => {
         // By default, we set the Content-Type header to application/json
@@ -88,7 +87,7 @@ export const useFetchApi = () => {
                     ...options
                 });
 
-                if (attempts !== 0 && sentrydsn) {
+                if (attempts !== 0 && Sentry) {
                     Sentry.captureMessage('Request took multiple attempts', {extra: getErrorData()});
                 }
 
@@ -104,7 +103,7 @@ export const useFetchApi = () => {
                     continue;
                 }
 
-                if (attempts !== 0 && sentrydsn) {
+                if (attempts !== 0 && Sentry) {
                     Sentry.captureMessage('Request failed after multiple attempts', {extra: getErrorData()});
                 }
 
